@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 #load data
 train_datagen = ImageDataGenerator(
     rescale=1./255,
-    # shear_range=0.2,
-    # zoom_range=0.2,
-    validation_split=0.2
-    # horizontal_flip=True
+    shear_range=0.2,
+    zoom_range=0.2,
+    validation_split=0.2,
+    horizontal_flip=True
     )
 
 test_datagen = ImageDataGenerator(rescale=1./255)
@@ -109,8 +109,8 @@ def test_step(x, y):
 #training loop
 num_epochs = 10
 
-train_writer = tf.summary.create_file_writer('logs/May6/train', max_queue = 32)
-valid_writer = tf.summary.create_file_writer('logs/May6/validation', max_queue = 32)
+train_writer = tf.summary.create_file_writer('logs/May7/train', max_queue = 32)
+valid_writer = tf.summary.create_file_writer('logs/May7/validation', max_queue = 32)
 
 total_train_files = 0
 total_valid_files = 0
@@ -213,7 +213,7 @@ for epoch in range(num_epochs):
     val_acc_metric.reset_states()
     print("Validation acc: %.4f" % (float(val_acc)))
     
-    model.save_weights(f'saved_models/{datetime.now().strftime("%d_%m_%Y_%H_%M_%S")} epoch {epoch}_acc_{train_acc}_loss_{loss_value}.h5')
+    model.save_weights(f'saved_models/data_aug_on_{datetime.now().strftime("%d_%m_%Y_%H_%M_%S")} epoch {epoch}_acc_{train_acc}_loss_{loss_value}.h5')
     
 train_writer.close()
 valid_writer.close()
