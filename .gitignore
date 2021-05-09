@@ -1,4 +1,2 @@
-./base_model/logs/May6/train/events.out.tfevents.1620349701.ip-172-31-21-247.4631.377.v2
-./base_model/logs/May6/train/events.out.tfevents.1620319129.ip-172-31-21-247.2761.377.v2
-./base_model/logs/May6/train/events.out.tfevents.1620349701.ip-172-31-21-247.4631.377.v2
-./base_model/logs/May6/validation/events.out.tfevents.1620349701.ip-172-31-21-247.4631.385.v2
+/base_model/logs
+/resnet_model/logs
