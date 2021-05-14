@@ -176,6 +176,7 @@ for epoch in range(num_epochs):
 
             with valid_writer.as_default(step=total_valid_files):
                 tf.summary.scalar("validation_accuracy", val_acc)
+                tf.summary.scalar("validation_loss", val_loss)
 
                 #train images truth vs prediction imgs
                 annotated_images = put_text(x_validation_batch, y_validation_batch, val_y_pred)
@@ -184,6 +185,7 @@ for epoch in range(num_epochs):
                 #histogram
                 tf.summary.histogram("validation_predicted_output", val_y_pred)
                 total_valid_files += 32
+                
         #remember to undo comment for model save weights at bottom
         # if val_batch_idx%128 == 0 and val_batch_idx!=0:
         #     break
