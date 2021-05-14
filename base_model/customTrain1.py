@@ -9,6 +9,7 @@ from sklearn.metrics import roc_curve, auc
 from helperFunctions import plot_fig, put_text
 import numpy as np
 import matplotlib.pyplot as plt
+from squeezeExcite import SE_Model
 
 #load data
 train_datagen = ImageDataGenerator(
@@ -38,49 +39,16 @@ validation_generator = train_datagen.flow_from_directory(
     class_mode='binary')
 
 
-# test_generator = test_datagen.flow_from_directory(
-#     '../../ddd_images_test/drowsiness-scale',
-#     target_size=(128, 128),
-#     batch_size=32,
-#     # shuffle=True,
-#     class_mode='binary')
-
-
 #new model
-model = Sequential(
-[
-    keras.Input((128,128,3)),
-    Conv2D(32, 5, activation='relu', padding = 'same'),
-    BatchNormalization(),
-    MaxPooling2D((2,2)),
+model = SE_Model(1, input_shape=(128,128,3))
+model.summary()
 
-    Conv2D(32, 5, activation='relu', padding = 'same'),
-    BatchNormalization(),
-    MaxPooling2D((2,2)),
-    Dropout(0.5),
-
-    Conv2D(16, 5, activation='relu', padding = 'same'),
-    BatchNormalization(),
-    MaxPooling2D((2,2)),
-
-    Conv2D(8, 5, activation='relu', padding = 'same'),
-    BatchNormalization(),
-    MaxPooling2D((2,2)),
-    Dropout(0.5),
-
-    Conv2D(4, 5, activation='relu', padding = 'same'),
-    BatchNormalization(),
-    MaxPooling2D((2,2)),
-
-    Flatten(),
-    Dense(1, activation='sigmoid')
-]
-)
-
-optimizer = keras.optimizers.Adam()
+optimizer = keras.optimizers.Adam(lr=0.00001)
 loss_fn = keras.losses.BinaryCrossentropy(from_logits=True) #from_logits=True means output probabilities are not normalized
 acc_metric = keras.metrics.BinaryAccuracy()
+
 val_acc_metric = keras.metrics.BinaryAccuracy()
+val_loss_fn = keras.losses.BinaryCrossentropy(from_logits=True)
 
 model.summary()
 
@@ -102,15 +70,16 @@ def train_step(x, y):
 @tf.function
 def test_step(x, y):
     val_preds = model(x, training=False)
+    loss = val_loss_fn(y, val_preds)
     # Update val metrics
     val_acc_metric.update_state(y, val_preds)
-    return val_preds
+    return val_preds, loss
 
 #training loop
-num_epochs = 10
+num_epochs = 15
 
-train_writer = tf.summary.create_file_writer('logs/May7/train', max_queue = 32)
-valid_writer = tf.summary.create_file_writer('logs/May7/validation', max_queue = 32)
+train_writer = tf.summary.create_file_writer('logs/SEModel/train', max_queue = 32)
+valid_writer = tf.summary.create_file_writer('logs/SEModel/validation', max_queue = 32)
 
 total_train_files = 0
 total_valid_files = 0
@@ -120,6 +89,13 @@ for epoch in range(num_epochs):
     #not sure if they work at last while saving because of scope, remove later
     loss_value=0
     train_acc=0
+
+    #empty at the begining of every epoch
+    fpr=[]
+    tpr=[]
+    
+    valid_tpr=[]
+    valid_fpr=[]
     
     #from here
     for batch_idx in range(train_generator.samples//32):
@@ -139,17 +115,16 @@ for epoch in range(num_epochs):
             print(f"epoch {epoch}, batch {batch_idx} loss = {loss_value}, accuracy = {acc_metric.result()}")
             
             #for roc
-            fpr, tpr, _ = roc_curve(y_batch, y_preds)
-            roc_auc = auc(fpr, tpr)
-            roc_img = plt.figure()
+            batch_fpr, batch_tpr, _ = roc_curve(y_batch, y_preds)
+            #store in array for overall epoch roc
+            for i in range(len(batch_fpr)):
+                fpr.append(batch_fpr[i])
+                tpr.append(batch_tpr[i])
             
 
             with train_writer.as_default(step=total_train_files):
                 tf.summary.scalar("train_accuracy", train_acc)
                 tf.summary.scalar("train_loss", loss_value)
-
-                #roc img
-                tf.summary.image('train_roc', roc_img)
 
                 #train images truth vs prediction imgs
                 annotated_images = put_text(x_batch, y_batch, y_preds)
@@ -160,8 +135,15 @@ for epoch in range(num_epochs):
 
                 #increasing after every 32 batches
                 total_train_files += 32
+
+        #for trial remove later    
+        # if batch_idx%128 == 0 and batch_idx!=0:
+        #     break
     
-        
+    roc_auc = auc(np.sort(fpr), np.sort(tpr))
+    image = plot_fig(np.sort(fpr), np.sort(tpr), roc_auc)
+    with train_writer.as_default():
+        tf.summary.image('roc_train', image, step=epoch)
     
     print(f"Accuracy over epoch {train_acc}")
     acc_metric.reset_states()
@@ -175,10 +157,10 @@ for epoch in range(num_epochs):
         x_validation_batch = recent_validation_batch[0]
         y_validation_batch = recent_validation_batch[1]
         
-        y_valid_pred = test_step(x_validation_batch,y_validation_batch)
+        y_valid_pred, val_loss = test_step(x_validation_batch,y_validation_batch)
 
         y_pred_shape = y_valid_pred.shape[0]
-        y_preds= np.reshape(tf.get_static_value(y_valid_pred),(1,y_pred_shape))[0]
+        val_y_pred= np.reshape(tf.get_static_value(y_valid_pred),(1,y_pred_shape))[0]
   
         val_acc = val_acc_metric.result()
 
@@ -187,28 +169,30 @@ for epoch in range(num_epochs):
             print(f"Validation acc in valid batch {val_batch_idx}: %.4f" % (float(val_acc),))
 
             #for roc
-            fpr, tpr, _ = roc_curve(y_validation_batch, y_preds)
-            roc_auc = auc(fpr, tpr)
-            roc_img = plt.figure()
-            
+            fpr, tpr, _ = roc_curve(y_validation_batch, val_y_pred)
+            for i in range(len(batch_fpr)):
+                valid_fpr.append(batch_fpr[i])
+                valid_tpr.append(batch_tpr[i])
 
             with valid_writer.as_default(step=total_valid_files):
                 tf.summary.scalar("validation_accuracy", val_acc)
 
-                #roc img
-                tf.summary.image('train_roc', roc_img)
-
                 #train images truth vs prediction imgs
-                annotated_images = put_text(x_validation_batch, y_validation_batch, y_preds)
+                annotated_images = put_text(x_validation_batch, y_validation_batch, val_y_pred)
                 tf.summary.image('validation_images', annotated_images, max_outputs=12)
 
                 #histogram
-                tf.summary.histogram("validation_predicted_output", y_preds)
+                tf.summary.histogram("validation_predicted_output", val_y_pred)
                 total_valid_files += 32
+        #remember to undo comment for model save weights at bottom
+        # if val_batch_idx%128 == 0 and val_batch_idx!=0:
+        #     break
+              
+    roc_auc = auc(np.sort(fpr), np.sort(tpr))
+    valid_roc_image = plot_fig(np.sort(valid_fpr), np.sort(valid_tpr), roc_auc)
+    with train_writer.as_default():
+        tf.summary.image('roc_valid', valid_roc_image, step=epoch)
 
-        
-            
-            
 
     val_acc_metric.reset_states()
     print("Validation acc: %.4f" % (float(val_acc)))
