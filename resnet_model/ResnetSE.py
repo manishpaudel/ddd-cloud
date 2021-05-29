@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow_addons as tfa
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import keras
 from keras.layers import Conv2D, MaxPooling2D
@@ -8,7 +9,7 @@ from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 
-from helper import SEResNet
+from helper import SEResNet18
 from sklearn.metrics import roc_curve, auc
 from helperFunctions import plot_fig, put_text
 
@@ -41,10 +42,12 @@ validation_generator = train_datagen.flow_from_directory(
 
 
 #new model
-model = SEResNet(input_shape=(128,128,3), classes = 1)
+model = SEResNet18(input_shape=(128,128,3), classes = 1)
 model.summary()
 
-optimizer = keras.optimizers.Adam(lr=0.00001)
+#optimizer = tfa.optimizers.AdamW(learning_rate=0.001, weight_decay=0.01)
+optimizer = tf.optimizers.Adam(learning_rate=0.001)
+
 loss_fn = keras.losses.BinaryCrossentropy(from_logits=True) #from_logits=True means output probabilities are not normalized
 acc_metric = keras.metrics.BinaryAccuracy()
 

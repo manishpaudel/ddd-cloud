@@ -60,7 +60,7 @@ def SEResNet(input_shape=None,
                 ResNet-101 = [3, 6, 23, 3]
                 ResNet-152 = [3, 8, 36, 3]
             filter: number of filters per block, defined as a list.
-                filters = [64, 128, 256, 512
+                filters = [64, 128, 256, 512]
             width: width multiplier for the network (for Wide ResNets)
             bottleneck: adds a bottleneck conv to reduce computation
             weight_decay: weight decay (l2 norm)
