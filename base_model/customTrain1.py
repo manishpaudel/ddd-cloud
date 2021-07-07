@@ -43,7 +43,7 @@ validation_generator = train_datagen.flow_from_directory(
 model = SE_Model(1, input_shape=(128,128,3))
 model.summary()
 
-optimizer = keras.optimizers.Adam(lr=0.00001)
+optimizer = keras.optimizers.Adam(lr=0.001)
 loss_fn = keras.losses.BinaryCrossentropy(from_logits=True) #from_logits=True means output probabilities are not normalized
 acc_metric = keras.metrics.BinaryAccuracy()
 
