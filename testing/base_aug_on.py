@@ -56,7 +56,7 @@ acc_metric = keras.metrics.BinaryAccuracy()
 val_acc_metric = keras.metrics.BinaryAccuracy()
 
 model.summary()
-model.load_weights('models/data_aug_off_model.h5')
+model.load_weights('models/data_aug_on_model.h5')
 
 @tf.function
 def test_step(x, y):
@@ -67,7 +67,7 @@ def test_step(x, y):
     val_acc_metric.update_state(y, val_preds)
     return val_preds, loss
 
-valid_writer = tf.summary.create_file_writer('logs/base_aug_off_test/sunglasses', max_queue = 10)
+valid_writer = tf.summary.create_file_writer('logs/base_aug_on_test/sunglasses', max_queue = 10)
 
 total_valid_files = 0
 
